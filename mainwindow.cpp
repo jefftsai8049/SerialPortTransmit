@@ -7,30 +7,24 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     port = new QSerialPort(this);
-
+    //每500ms更新一次progress bar
     clock = new QTimer;
     clock->setInterval(500);
     connect(clock,SIGNAL(timeout()),this,SLOT(speedMeter()));
-
+    //每20ms收取RS232 Data
     RS232Receive = new QTimer;
     RS232Receive->setInterval(20);
     RS232Receive->start();
     connect(RS232Receive,SIGNAL(timeout()),this,SLOT(receiveMsg()));
-
-    //     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
-    //     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-
-    //    QSerialPortInfo info("COM7");
+    //偵測電腦上可用之COM Port
     QList<QSerialPortInfo> portList;
     portList = QSerialPortInfo::availablePorts();
     for(int i = 0; i < QSerialPortInfo::standardBaudRates().size(); i++)
     {
         ui->port_baud_comboBox->insertItem(i,QString::number(QSerialPortInfo::standardBaudRates().at(i)));
     }
-
     for(int i = 0; i < portList.size(); i++)
     {
-        //        qDebug() << portList.at(i).portName() << portList.at(i).description() << portList.at(i).standardBaudRates();
         ui->port_name_comboBox->insertItem(i,portList.at(i).portName()+" "+portList.at(i).description());
     }
 }
@@ -43,6 +37,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_open_com_pushButton_clicked()
 {
+    //開啟COM port
     QString portName = ui->port_name_comboBox->currentText();
 
     QSerialPortInfo info(portName.split(" ")[0]);
@@ -101,15 +96,13 @@ void MainWindow::receiveMsg()
 {
     if(port->isOpen())
     {
-        //        QTextCodec *codec = QTextCodec::codecForName("Big5");
-        //        QString msg = codec->toUnicode(port->readAll());
+        //收RS232 Data
         QString msg = port->readAll();
-
         if(msg.isEmpty())
             return;
         QString fileName;
 
-
+        //檢查檔案頭是否為檔案封包，否則為一般文字封包
         if(msg[0] == 17 && msg[1] == 18)
         {
             if(msg.toStdString().find(20) - msg.toStdString().find(19) == 1)
@@ -123,15 +116,13 @@ void MainWindow::receiveMsg()
             file.setFileName(fileName);
             file.open(QFile::ReadWrite);
             msg.remove(0,msg.toStdString().find(20)+1);
-            qDebug() << fileName;
 
         }
-
+        //為檔案封包處理
         if(transMode == 1)
         {
             if(msg[msg.size()-1] == 23)
             {
-                qDebug() <<"finish";
                 transMode = 0;
                 msg.remove(msg.size()-1,1);
                 file.write(msg.toStdString().c_str());
@@ -144,12 +135,10 @@ void MainWindow::receiveMsg()
                 return;
             }
         }
+        //一般文字封包
         else
         {
-
-
-
-        ui->msg_textBrowser->insertPlainText(msg);
+            ui->msg_textBrowser->insertPlainText(msg);
         }
     }
 }
@@ -164,6 +153,7 @@ void MainWindow::on_send_msg_pushButton_clicked()
 
 void MainWindow::on_actionTransmit_file_triggered()
 {
+    //傳檔案
     QString fileName = QFileDialog::getOpenFileName();
     if (fileName.isEmpty())
         return;
@@ -171,6 +161,7 @@ void MainWindow::on_actionTransmit_file_triggered()
     if(!file.open(QIODevice::ReadOnly))
         return;
 
+    //檔案頭，作為檢查是否為檔案封包使用
     QByteArray header;
     header.append(17);
     header.append(18);
@@ -183,13 +174,11 @@ void MainWindow::on_actionTransmit_file_triggered()
     while(!file.atEnd())
     {
         QByteArray byte = file.read(1024);
-
         port->write(byte);
     }
-
+    //檔案尾，作為檔案結束確認使用
     QByteArray eof;
     eof.append((char)23);
-
     port->write(eof);
     file.close();
 
@@ -197,6 +186,7 @@ void MainWindow::on_actionTransmit_file_triggered()
 
 void MainWindow::speedMeter()
 {
+    //計算檔案傳輸進度
     float val = 100.0-(float)port->bytesToWrite()/(float)file.size()*100.0;
     ui->progressBar->setValue(val);
     if(val == 100.0)
@@ -207,6 +197,7 @@ void MainWindow::speedMeter()
 
 void MainWindow::on_close_com_pushButton_clicked()
 {
+    //關閉COM port
     port->close();
     ui->port_status_label->setText("Disconnect");
     ui->port_name_label->setText("");

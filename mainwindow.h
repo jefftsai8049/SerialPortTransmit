@@ -3,8 +3,8 @@
 
 #include <QMainWindow>
 #include <QString>
-#include <QtSerialPort/QSerialPort>
-#include <QtSerialPort/QSerialPortInfo>
+#include <QSerialPort>
+#include <QSerialPortInfo>
 #include <QDebug>
 #include <QByteArray>
 #include <QFileDialog>
@@ -15,8 +15,6 @@
 #include <QTimer>
 #include <QList>
 #include <QStringList>
-
-
 #include <QTextCodec>
 
 
@@ -47,8 +45,11 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    //for RS232 port
     QSerialPort *port;
+    //update progress
     QTimer *clock;
+    //for receive RS232 data
     QTimer *RS232Receive;
 
     QFile file;
